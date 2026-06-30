@@ -10,8 +10,8 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-// Eigene Tabelle, eigene JPA-Entity – vollständig unabhängig vom Event Store.
-// Kann jederzeit gelöscht und aus dem Event Store neu aufgebaut werden (Replay).
+// Eigene Tabelle, eigene JPA-Entity – vollständig unabhängig vom Event-Store.
+// Kann jederzeit gelöscht und aus dem Event-Store neu aufgebaut werden (Replay).
 @Setter
 @Getter
 @Entity

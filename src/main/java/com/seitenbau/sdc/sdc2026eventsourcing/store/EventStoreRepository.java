@@ -8,4 +8,8 @@ public interface EventStoreRepository extends JpaRepository<StoredEvent, UUID> {
 
     // Der häufigste Zugriffstyp: alle Events eines Aggregates in Reihenfolge
     List<StoredEvent> findByAggregateIdOrderByVersionAsc(UUID aggregateId);
+
+    // Replay: alle Events aller Aggregates in chronologischer Reihenfolge
+    // occurred_at zuerst, version als Tiebreaker bei gleichen Timestamps
+    List<StoredEvent> findAllByOrderByOccurredAtAscVersionAsc();
 }

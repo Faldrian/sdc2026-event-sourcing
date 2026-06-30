@@ -68,6 +68,14 @@ public class EventStore {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<DomainEvent> loadAll() {
+        return repository.findAllByOrderByOccurredAtAscVersionAsc()
+                .stream()
+                .map(this::deserialize)
+                .toList();
+    }
+
     // -------------------------------------------------------------------------
     // Serialisierung: Domain-Objekt → JSON-String
     // -------------------------------------------------------------------------

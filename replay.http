@@ -1,0 +1,155 @@
+# replay.http
+# Zeigt den kompletten Replay-Zyklus:
+#   1. Daten anlegen
+#   2. Statistik prüfen (Read Model gefüllt)
+#   3. Read Model löschen → Statistik leer
+#   4. Replay auslösen → Statistik wieder korrekt
+#
+# Ausführung: "Run All Requests in File" (▶▶)
+# -----------------------------------------------------------------------
+
+### 1. Konto 1 anlegen
+POST http://localhost:8080/accounts
+Content-Type: application/json
+
+{
+  "owner": "Max Mustermann",
+  "initialBalance": "0.00"
+}
+
+> {%
+    client.test("1 – Konto 1 angelegt (HTTP 201)", function () {
+        client.assert(response.status === 201, "Erwartet: 201 Created");
+    });
+    client.global.set("replayAccountId1", response.body);
+%}
+
+
+### 2. Konto 2 anlegen
+POST http://localhost:8080/accounts
+Content-Type: application/json
+
+{
+  "owner": "Erika Musterfrau",
+  "initialBalance": "0.00"
+}
+
+> {%
+    client.test("2 – Konto 2 angelegt (HTTP 201)", function () {
+        client.assert(response.status === 201, "Erwartet: 201 Created");
+    });
+    client.global.set("replayAccountId2", response.body);
+%}
+
+
+### 3. Konto 1: Einzahlung 150 € → über 100 €
+POST http://localhost:8080/accounts/{{replayAccountId1}}/deposit
+Content-Type: application/json
+
+{
+  "amount": "150.00"
+}
+
+> {%
+    client.test("3 – Konto 1 hat 150 € (HTTP 200)", function () {
+        client.assert(response.status === 200, "Erwartet: 200 OK");
+        client.assert(response.body.balance === 150.00, "Erwartet: 150");
+    });
+%}
+
+
+### 4. Konto 2: Einzahlung 50 € → unter 100 €
+POST http://localhost:8080/accounts/{{replayAccountId2}}/deposit
+Content-Type: application/json
+
+{
+  "amount": "50.00"
+}
+
+> {%
+    client.test("4 – Konto 2 hat 50 € (HTTP 200)", function () {
+        client.assert(response.status === 200, "Erwartet: 200 OK");
+        client.assert(response.body.balance === 50.00, "Erwartet: 50");
+    });
+%}
+
+
+### 5. Statistik prüfen – Read Model ist gefüllt
+# Konto 1 (150 €) muss erscheinen, Konto 2 (50 €) nicht.
+GET http://localhost:8080/statistics/accounts/above-balance?threshold=100
+Accept: application/json
+
+> {%
+    client.test("5 – Statistik: genau ein Konto über 100 €", function () {
+        var accounts = response.body;
+        client.assert(accounts.length === 1,
+            "Erwartet: 1 Konto, tatsächlich: " + accounts.length);
+        client.assert(accounts[0].owner === "Max Mustermann",
+            "Erwartet: Max Mustermann");
+    });
+%}
+
+
+### 6. Read Model löschen → Event Store bleibt unangetastet!
+DELETE http://localhost:8080/admin/read-model
+
+> {%
+    client.test("6 – Read Model gelöscht (HTTP 204)", function () {
+        client.assert(response.status === 204, "Erwartet: 204 No Content");
+    });
+%}
+
+
+### 7. Statistik nach dem Löschen → leere Liste
+# Das Read Model ist weg – die Events im Event Store sind noch alle da.
+GET http://localhost:8080/statistics/accounts/above-balance?threshold=100
+Accept: application/json
+
+> {%
+    client.test("7 – Statistik leer nach Read-Model-Löschung", function () {
+        var accounts = response.body;
+        client.assert(accounts.length === 0,
+            "Erwartet: 0 Konten, tatsächlich: " + accounts.length);
+    });
+%}
+
+
+### 8. Replay auslösen → Read Model wird neu aufgebaut
+POST http://localhost:8080/admin/read-model/replay
+
+> {%
+    client.test("8 – Replay erfolgreich (HTTP 200)", function () {
+        client.assert(response.status === 200, "Erwartet: 200 OK");
+    });
+    client.test("8 – Events wurden repliziert", function () {
+        var result = response.body;
+        // 4 Events: AccountOpened x2, MoneyDeposited x2
+        client.assert(result.eventsReplayed === 4,
+            "Erwartet: 4 Events, tatsächlich: " + result.eventsReplayed);
+    });
+%}
+
+
+### 9. Statistik nach Replay → exakt wie vor dem Löschen
+# Der Beweis: der Event Store ist die einzige Source of Truth.
+# Das Read Model ist vollständig wiederhergestellt – ohne manuelle Dateneingabe.
+GET http://localhost:8080/statistics/accounts/above-balance?threshold=100
+Accept: application/json
+
+> {%
+    client.test("9 – Statistik nach Replay korrekt (HTTP 200)", function () {
+        client.assert(response.status === 200, "Erwartet: 200 OK");
+    });
+    client.test("9 – Wieder genau ein Konto über 100 €", function () {
+        var accounts = response.body;
+        client.assert(accounts.length === 1,
+            "Erwartet: 1 Konto, tatsächlich: " + accounts.length);
+    });
+    client.test("9 – Konto 1 ist mit korrektem Kontostand wiederhergestellt", function () {
+        var accounts = response.body;
+        client.assert(accounts[0].owner === "Max Mustermann",
+            "Erwartet: Max Mustermann");
+        client.assert(accounts[0].balance === 150.00,
+            "Erwartet: balance = 150, tatsächlich: " + accounts[0].balance);
+    });
+%}

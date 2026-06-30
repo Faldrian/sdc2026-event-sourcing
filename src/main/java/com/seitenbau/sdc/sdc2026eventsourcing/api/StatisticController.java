@@ -20,7 +20,7 @@ public class StatisticController {
 
     // GET /statistics/accounts/above-balance?threshold=100
     // → Direkte SQL-Abfrage auf dem Read Model
-    // → auf dem Event Store direkt so nicht möglich
+    // → auf dem Event-Store direkt so nicht möglich
     @GetMapping("/accounts/above-balance")
     public ResponseEntity<List<AccountSummary>> accountsAboveBalance(
             @RequestParam BigDecimal threshold) {

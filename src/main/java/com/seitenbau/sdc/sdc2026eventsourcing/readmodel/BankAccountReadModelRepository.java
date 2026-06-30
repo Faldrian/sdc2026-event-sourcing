@@ -10,6 +10,6 @@ public interface BankAccountReadModelRepository extends JpaRepository<BankAccoun
 
     // Spring Data leitet daraus automatisch die SQL-Query ab:
     // SELECT * FROM bank_account_read_model WHERE balance > :threshold
-    // Genau diese Abfrage wäre auf dem Event Store direkt nicht möglich.
+    // Genau diese Abfrage wäre auf dem Event-Store direkt nicht möglich.
     List<BankAccountReadModel> findByBalanceGreaterThan(BigDecimal threshold);
 }

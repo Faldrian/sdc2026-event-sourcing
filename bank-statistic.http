@@ -82,7 +82,7 @@ Content-Type: application/json
 
 ### 5. Statistik: alle Konten mit Kontostand > 1000 €
 # Erwartet: nur Konto 1 (1500 €) – Konto 2 (50 €) darf nicht erscheinen
-GET http://localhost:8080/statistics/accounts/above-balance?threshold=100
+GET http://localhost:8080/statistics/accounts/above-balance?threshold=1000
 Accept: application/json
 
 > {%
