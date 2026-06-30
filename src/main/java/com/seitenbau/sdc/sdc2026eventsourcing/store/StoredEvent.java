@@ -1,6 +1,8 @@
 package com.seitenbau.sdc.sdc2026eventsourcing.store;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -34,8 +36,8 @@ public class StoredEvent {
     @Column(name = "event_type", nullable = false)
     private String eventType;
 
-    // TEXT für den Start; in Produktion JSONB für SQL-JSON-Abfragen (z.B. payload->>'owner')
-    @Column(nullable = false, columnDefinition = "text")
+    @Column(nullable = false, columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String payload;
 
     @Column(nullable = false)

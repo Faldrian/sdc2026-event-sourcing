@@ -34,7 +34,7 @@ public class BankAccountController {
 
     /** POST /accounts/{id}/deposit  →  Geld einzahlen */
     @PostMapping("/{id}/deposit")
-    public ResponseEntity<Void> deposit(
+    public ResponseEntity<AccountResponse> deposit(
             @PathVariable UUID id,
             @RequestBody AmountRequest request) {
 
@@ -46,12 +46,12 @@ public class BankAccountController {
         eventStore.save(id, AGGREGATE_TYPE,
                 account.getPendingEvents(), account.getVersion());
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(toResponse(account));
     }
 
     /** POST /accounts/{id}/withdraw  →  Geld auszahlen */
     @PostMapping("/{id}/withdraw")
-    public ResponseEntity<Void> withdraw(
+    public ResponseEntity<AccountResponse> withdraw(
             @PathVariable UUID id,
             @RequestBody AmountRequest request) {
 
@@ -60,7 +60,7 @@ public class BankAccountController {
         eventStore.save(id, AGGREGATE_TYPE,
                 account.getPendingEvents(), account.getVersion());
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(toResponse(account));
     }
 
     /** GET /accounts/{id}  →  aktueller Zustand (aus Events rekonstruiert) */
@@ -73,6 +73,10 @@ public class BankAccountController {
 
     private BankAccountAggregate loadAggregate(UUID id) {
         return BankAccountAggregate.reconstitute(eventStore.load(id));
+    }
+
+    private AccountResponse toResponse(BankAccountAggregate account) {
+        return new AccountResponse(account.getId(), account.getOwner(), account.getBalance());
     }
 }
 

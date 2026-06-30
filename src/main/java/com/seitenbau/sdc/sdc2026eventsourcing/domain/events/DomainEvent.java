@@ -8,5 +8,6 @@ public sealed interface DomainEvent
         permits AccountOpenedEvent, MoneyDepositedEvent, MoneyWithdrawnEvent {
 
     UUID aggregateId();
+
     Instant occurredAt();
 }

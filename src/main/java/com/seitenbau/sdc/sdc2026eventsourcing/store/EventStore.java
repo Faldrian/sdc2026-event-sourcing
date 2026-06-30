@@ -10,7 +10,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -22,9 +24,9 @@ public class EventStore {
     /**
      * Persistiert die pendingEvents eines Aggregates.
      *
-     * @param expectedVersion  aggregate.getVersion() VOR dem Command
-     *                         (-1 für brandneues Aggregate, n für bestehendes mit n+1 Events)
-     *                         → erstes neues Event bekommt Version expectedVersion + 1
+     * @param expectedVersion aggregate.getVersion() VOR dem Command
+     *                        (-1 für brandneues Aggregate, n für bestehendes mit n+1 Events)
+     *                        → erstes neues Event bekommt Version expectedVersion + 1
      */
     @Transactional
     public void save(UUID aggregateId, String aggregateType,
@@ -77,9 +79,28 @@ public class EventStore {
     private DomainEvent deserialize(StoredEvent stored) {
         try {
             return switch (stored.getEventType()) {
-                case "AccountOpenedEvent"  -> objectMapper.readValue(stored.getPayload(), AccountOpenedEvent.class);
-                case "MoneyDepositedEvent" -> objectMapper.readValue(stored.getPayload(), MoneyDepositedEvent.class);
-                case "MoneyWithdrawnEvent" -> objectMapper.readValue(stored.getPayload(), MoneyWithdrawnEvent.class);
+                case "AccountOpenedEvent" -> {
+                    var e = objectMapper.readValue(stored.getPayload(), AccountOpenedEvent.class);
+                    yield AccountOpenedEvent.reconstruct(
+                            stored.getAggregateId(),
+                            stored.getOccurredAt(),
+                            e.owner(),
+                            e.initialBalance());
+                }
+                case "MoneyDepositedEvent" -> {
+                    var e = objectMapper.readValue(stored.getPayload(), MoneyDepositedEvent.class);
+                    yield MoneyDepositedEvent.reconstruct(
+                            stored.getAggregateId(),
+                            stored.getOccurredAt(),
+                            e.amount());
+                }
+                case "MoneyWithdrawnEvent" -> {
+                    var e = objectMapper.readValue(stored.getPayload(), MoneyWithdrawnEvent.class);
+                    yield MoneyWithdrawnEvent.reconstruct(
+                            stored.getAggregateId(),
+                            stored.getOccurredAt(),
+                            e.amount());
+                }
                 default -> throw new IllegalArgumentException(
                         "Unbekannter Event-Typ: " + stored.getEventType());
             };
