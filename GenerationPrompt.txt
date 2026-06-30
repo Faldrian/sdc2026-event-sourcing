@@ -1,0 +1,15 @@
+Ich möchte eine Beispielsoftware zum Thema Event Sourcing erstellen.
+Grobe Architektur:
+- Spring Boot mit Java 25 und Spring JPA (Postgresql), Spring Web für die Rest-Controller, Spring Data für die Datenbankzugriffe
+- Hexagonale Struktur, Domain driven design
+- Event Sourcing (das soll der Hauptfokus sein)
+- CQRS
+- Außenschnittstellen:
+    - Postgresql für die Persistent des Event Store (eine Append-Only Tabelle) und einer Projektion, auf der Abfragen gemacht werden können.
+    - REST Schnittstelle mit ein paar Beispiel-Operationen
+
+Wichtig: Es soll kein komplett produktionsbereites setup sein, es wird nur ein Proof of Concept.
+
+Als Beispiel für die Fachdomäne nehmen wir eine Fahrradwerkstatt, die auch fahrräder baut. Das bedeutet, eins der Aggregates ist auf jeden Fall ein Fahrrad.
+Da kann es events geben, dass ein neues fahrrad erstellt wird (das fängt mit einen Rahmen an, der hat einfach nur eine String bezeichnung). dann kann ein fahrrad ein einrad, ein zweirad oder ein lastenrad mit drei rändern sein.
+dann kann man räder an das fahrrad anbauen oder auch räder auswechseln (wenn es z.b. reparaturen gab). räder kann man nur an stellen abmontieren, an denen welche anmontiert sind.
