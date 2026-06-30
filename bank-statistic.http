@@ -1,0 +1,112 @@
+# statistics.http
+# Legt zwei Konten an, füllt Konto 1 auf > 100 € auf, Konto 2 bleibt darunter.
+# Prüft anschließend, dass nur Konto 1 in der Statistik-Abfrage erscheint.
+#
+# Voraussetzung: Spring Boot App läuft, PostgreSQL läuft (docker compose up -d)
+# Ausführung:    "Run All Requests in File" (▶▶) oben rechts im Editor
+# -----------------------------------------------------------------------
+
+### 1. Konto 1 anlegen (wird später > 100 € haben)
+POST http://localhost:8080/accounts
+Content-Type: application/json
+
+{
+  "owner": "Max Mustermann",
+  "initialBalance": "0.00"
+}
+
+> {%
+    client.test("1 – Konto 1 angelegt (HTTP 201)", function () {
+        client.assert(response.status === 201, "Erwartet: 201 Created");
+    });
+    client.global.set("statsAccountId1", response.body);
+    console.log("Konto 1 ID: " + client.global.get("statsAccountId1"));
+%}
+
+
+### 2. Konto 2 anlegen (bleibt unter 100 €)
+POST http://localhost:8080/accounts
+Content-Type: application/json
+
+{
+  "owner": "Erika Musterfrau",
+  "initialBalance": "0.00"
+}
+
+> {%
+    client.test("2 – Konto 2 angelegt (HTTP 201)", function () {
+        client.assert(response.status === 201, "Erwartet: 201 Created");
+    });
+    client.global.set("statsAccountId2", response.body);
+    console.log("Konto 2 ID: " + client.global.get("statsAccountId2"));
+%}
+
+
+### 3. Konto 1: Einzahlung 1500 € → landet bei 1500 €
+POST http://localhost:8080/accounts/{{statsAccountId1}}/deposit
+Content-Type: application/json
+
+{
+  "amount": "1500.00"
+}
+
+> {%
+    client.test("3 – Einzahlung 1500 € auf Konto 1 (HTTP 200)", function () {
+        client.assert(response.status === 200, "Erwartet: 200 OK");
+    });
+    client.test("3 – Konto 1 hat 1500 €", function () {
+        client.assert(response.body.balance === 1500.00,
+            "Erwartet: balance = 1500");
+    });
+%}
+
+
+### 4. Konto 2: Einzahlung 50 € → bleibt bei 50 €
+POST http://localhost:8080/accounts/{{statsAccountId2}}/deposit
+Content-Type: application/json
+
+{
+  "amount": "50.00"
+}
+
+> {%
+    client.test("4 – Einzahlung 50 € auf Konto 2 (HTTP 200)", function () {
+        client.assert(response.status === 200, "Erwartet: 200 OK");
+    });
+    client.test("4 – Konto 2 hat 50 €", function () {
+        client.assert(response.body.balance === 50.00,
+            "Erwartet: balance = 50");
+    });
+%}
+
+
+### 5. Statistik: alle Konten mit Kontostand > 1000 €
+# Erwartet: nur Konto 1 (1500 €) – Konto 2 (50 €) darf nicht erscheinen
+GET http://localhost:8080/statistics/accounts/above-balance?threshold=100
+Accept: application/json
+
+> {%
+    client.test("5 – Statistik-Abfrage (HTTP 200)", function () {
+        client.assert(response.status === 200, "Erwartet: 200 OK");
+    });
+
+    client.test("5 – Genau ein Konto über 1000 €", function () {
+        var accounts = response.body;
+        client.assert(accounts.length === 1,
+            "Erwartet: 1 Konto, tatsächlich: " + accounts.length);
+    });
+
+    client.test("5 – Konto 1 (Max Mustermann) ist enthalten", function () {
+        var accounts = response.body;
+        client.assert(accounts[0].owner === "Max Mustermann",
+            "Erwartet: Max Mustermann, tatsächlich: " + accounts[0].owner);
+        client.assert(accounts[0].balance === 1500.00,
+            "Erwartet: balance = 1500, tatsächlich: " + accounts[0].balance);
+    });
+
+    client.test("5 – Konto 2 (Erika Musterfrau) ist NICHT enthalten", function () {
+        var accounts = response.body;
+        var erika = accounts.find(function (a) { return a.owner === "Erika Musterfrau"; });
+        client.assert(erika === undefined, "Erika Musterfrau darf nicht in der Liste sein");
+    });
+%}

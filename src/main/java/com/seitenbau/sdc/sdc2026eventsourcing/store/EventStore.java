@@ -7,6 +7,7 @@ import com.seitenbau.sdc.sdc2026eventsourcing.domain.events.DomainEvent;
 import com.seitenbau.sdc.sdc2026eventsourcing.domain.events.MoneyDepositedEvent;
 import com.seitenbau.sdc.sdc2026eventsourcing.domain.events.MoneyWithdrawnEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,7 @@ public class EventStore {
 
     private final EventStoreRepository repository;
     private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Persistiert die pendingEvents eines Aggregates.
@@ -50,6 +52,11 @@ public class EventStore {
         // saveAll → ein Batch-Insert, eine Transaktion
         // Bei Versionskollision: UNIQUE-Constraint → DataIntegrityViolationException
         repository.saveAll(toSave);
+
+        // Nach dem saveAll: Events für Projektoren publizieren.
+        // Durch @TransactionalEventListener(AFTER_COMMIT) im Projector
+        // werden die Handler erst nach dem Commit dieser Transaktion aufgerufen.
+        events.forEach(eventPublisher::publishEvent);
     }
 
     @Transactional(readOnly = true)
