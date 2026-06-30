@@ -1,0 +1,157 @@
+# bank-account.http
+# Vollständiger Walkthrough durch alle BankAccount-Operationen.
+#
+# Ausführung:
+#   → Einzeln:  den ▶ Button neben dem jeweiligen ### klicken
+#   → Alle:     "Run All Requests in File" (▶▶) oben rechts im Editor
+#
+# Reihenfolge ist wichtig: Request 1 setzt die accountId für alle anderen.
+# -----------------------------------------------------------------------
+
+### 1. Neues Konto eröffnen → speichert accountId als globale Variable
+POST http://localhost:8080/accounts
+Content-Type: application/json
+
+{
+  "owner": "Max Mustermann",
+  "initialBalance": "0.00"
+}
+
+> {%
+    client.test("1 – Konto angelegt (HTTP 201)", function () {
+        client.assert(response.status === 201, "Erwartet: 201 Created");
+    });
+
+    // Response-Body ist eine JSON-UUID-String: "550e8400-..."
+    // JSON.parse() entfernt die äußeren Anführungszeichen
+    const accountId = response.body.trim().replace(/^"|"$/g, '');
+    client.global.set("accountId", accountId);
+    console.log("Account ID gespeichert: " + accountId);
+%}
+
+
+### 2. Kontostand abfragen – initialer Zustand (balance = 0)
+GET http://localhost:8080/accounts/{{accountId}}
+Accept: application/json
+
+> {%
+    client.test("2 – Konto gefunden (HTTP 200)", function () {
+        client.assert(response.status === 200, "Erwartet: 200 OK");
+    });
+
+    client.test("2 – Initialer Kontostand ist 0", function () {
+        const account = response.body;
+        // BigDecimal wird von Jackson als Number serialisiert
+        client.assert(account.balance === 0.00, "Erwartet: balance = 0");
+    });
+%}
+
+
+### 3. Erste Einzahlung: +100 €
+POST http://localhost:8080/accounts/{{accountId}}/deposit
+Content-Type: application/json
+
+{
+  "amount": "100.00"
+}
+
+> {%
+    client.test("3 – Einzahlung 100€ erfolgreich (HTTP 200)", function () {
+        client.assert(response.status === 200, "Erwartet: 200 OK");
+    });
+%}
+
+
+### 4. Zweite Einzahlung: +50 €
+POST http://localhost:8080/accounts/{{accountId}}/deposit
+Content-Type: application/json
+
+{
+  "amount": "50.00"
+}
+
+> {%
+    client.test("4 – Einzahlung 50€ erfolgreich (HTTP 200)", function () {
+        client.assert(response.status === 200, "Erwartet: 200 OK");
+    });
+%}
+
+
+### 5. Auszahlung: -30 €
+POST http://localhost:8080/accounts/{{accountId}}/withdraw
+Content-Type: application/json
+
+{
+  "amount": "30.00"
+}
+
+> {%
+    client.test("5 – Auszahlung 30€ erfolgreich (HTTP 200)", function () {
+        client.assert(response.status === 200, "Erwartet: 200 OK");
+    });
+%}
+
+
+### 6. Kontostand prüfen → muss 120 € sein (0 + 100 + 50 - 30)
+GET http://localhost:8080/accounts/{{accountId}}
+Accept: application/json
+
+> {%
+    client.test("6 – Kontostand korrekt (HTTP 200)", function () {
+        client.assert(response.status === 200, "Erwartet: 200 OK");
+    });
+
+    client.test("6 – Kontostand ist 120 €", function () {
+        const account = response.body;
+        client.assert(account.balance === 120.00,
+            "Erwartet: balance = 120, tatsächlich: " + account.balance);
+    });
+%}
+
+
+### 7. Fehlerfall: Überziehung → Businesslogik-Fehler
+# Das Konto hat 120 € – 9999 € dürfen nicht funktionieren.
+# Erwartetes Verhalten: HTTP 500 (IllegalStateException aus dem Aggregate)
+# In Produktion würde man das mit einem @ExceptionHandler auf 400/422 mappen.
+POST http://localhost:8080/accounts/{{accountId}}/withdraw
+Content-Type: application/json
+
+{
+  "amount": "9999.00"
+}
+
+> {%
+    client.test("7 – Überziehung abgelehnt (HTTP 4xx/5xx)", function () {
+        client.assert(response.status >= 400,
+            "Erwartet: Fehler-Response, tatsächlich: " + response.status);
+    });
+%}
+
+
+### 8. Kontostand nach Fehlerfall – muss immer noch 120 € sein
+# Zeigt: das fehlerhafte Command hat KEIN Event erzeugt → State unverändert
+GET http://localhost:8080/accounts/{{accountId}}
+Accept: application/json
+
+> {%
+    client.test("8 – Kontostand nach Fehler unveränderter (HTTP 200)", function () {
+        client.assert(response.status === 200, "Erwartet: 200 OK");
+    });
+
+    client.test("8 – Kontostand ist immer noch 120 €", function () {
+        const account = response.body;
+        client.assert(account.balance === 120.00,
+            "Erwartet: balance = 120, tatsächlich: " + account.balance);
+    });
+%}
+
+
+### 9. Fehlerfall: Unbekannte Account-ID → 404
+GET http://localhost:8080/accounts/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+> {%
+    client.test("9 – Unbekannte ID → HTTP 404", function () {
+        client.assert(response.status === 404, "Erwartet: 404 Not Found");
+    });
+%}

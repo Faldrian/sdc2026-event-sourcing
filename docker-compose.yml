@@ -1,0 +1,29 @@
+# docker-compose.yml
+# Startet PostgreSQL + pgAdmin (optional, aber hilfreich für den Vortrag
+# um die domain_events-Tabelle live zu zeigen)
+#
+# Starten:    docker compose up -d
+# Stoppen:    docker compose down
+# Alles weg:  docker compose down -v
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: eventstore-postgres
+    environment:
+      POSTGRES_DB:       eventstore
+      POSTGRES_USER:     postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:     ["CMD-SHELL", "pg_isready -U postgres -d eventstore"]
+      interval: 5s
+      timeout:  5s
+      retries:  5
+
+volumes:
+  postgres_data:
