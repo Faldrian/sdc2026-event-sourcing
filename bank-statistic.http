@@ -6,7 +6,7 @@
 # Ausführung:    "Run All Requests in File" (▶▶) oben rechts im Editor
 # -----------------------------------------------------------------------
 
-### 1. Konto 1 anlegen (wird später > 100 € haben)
+### 1. Konto 1 anlegen (wird später > 1000 € haben)
 POST http://localhost:8080/accounts
 Content-Type: application/json
 
