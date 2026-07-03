@@ -406,12 +406,6 @@ Events und State
 ### 4a. Event Sourcing zeigen → `bank-account.http`
 1. Alle requests ausführen
    - mit withdraw einsteigen, durchgehen
-
-2. Nach dem Durchlauf: **`domain_events`-Tabelle in pgAdmin zeigen**
-   - Jede Zeile = ein Event
-   - Payload: nur das fachliche Delta
-   - version: aufsteigend pro AggregateId
-   - occurred_at: Zeitstempel für Zeitreise-Queries
 -->
 
 ---
@@ -586,15 +580,20 @@ Read Model neu aufbauen (bei ES) ist das, was wir ständig andauernd machen. Das
 
 
 ---
-layout: end
+layout: cover
 title: Ende
+background: /img/4cdca330-55ce-48ea-9383-ed6f674387e3.jpg
 ---
 
-Dankeschön!
+# Dankeschön!
+
+## Dank an Jannis 🏆 <small>und Sonnet 🤖</small>.
 
 Demoprojekt + Slides:<br>https://github.com/Faldrian/sdc2026-event-sourcing
 
-Fragen?
+![QR-Code](/img/qrcode.svg)
+
+## Fragen?
 
 <!--
 
@@ -611,3 +610,13 @@ Kafka ist ein Message Broker, kein Event Store.
 
 
 -->
+<style>
+h1, h2, p {
+  text-align: center
+}
+
+img {
+  width: 150px;
+  margin: auto;
+}
+</style>
